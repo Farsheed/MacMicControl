@@ -7,22 +7,24 @@ MacMicControl is a powerful macOS utility that gives you complete control over y
 ### 🎙️ Global Control
 - **System-Wide Mute**: Toggle your microphone on/off from anywhere using a customizable global shortcut.
 - **Menubar Status**: Always know your mic status with a customizable menubar icon (Red for Live, Blue for Muted by default).
+- **Dynamic Menu**: The status bar menu automatically updates to display your custom shortcut for "Toggle Mute".
 
 ### 🗣️ Push-to-Talk (PTT)
 - **PTT Mode**: Enable Push-to-Talk to keep your mic muted until you hold down your chosen key.
-- **Delay Mute**: preventing abrupt cut-offs by keeping the mic live for a configurable duration after releasing the key.
-- **Visual & Audio Feedback**: distinct sounds and visuals for PTT activation.
+- **Delay Mute**: Prevent abrupt cut-offs by keeping the mic live for a configurable duration after releasing the key.
+- **Visual & Audio Feedback**: Distinct sounds and visuals for PTT activation.
 
 ### ⚙️ Customization
 - **Shortcuts**: Record your own key combinations for all actions (including modifier-only keys like "Ctrl" or "Cmd").
 - **Appearance**: Customize the menubar icon colors for Muted, Unmuted, and PTT Active states.
 - **Feedback**: 
-  - **Visual Notifications**: Large HUD overlay when toggling mute or using PTT.
+  - **Visual Notifications**: Large HUD overlay when toggling mute or using PTT. 
+    - **Customizable Duration**: Set exactly how long the notification stays on screen, with independent settings for Standard Toggles and PTT events.
   - **Audio Cues**: Assign different system sounds for Mute, Unmute, PTT Press, and PTT Release.
   - **Blinking**: Option to blink the menubar icon when the mic is live.
 
 ### 🎧 Device Management
-- **Input Selection**: Switch your system default input device directly from the app.
+- **Input Selection**: Switch your system default input device directly from the app's menu.
 - **Exclusion List**: Choose which microphones the app controls. Keep specific devices (like a dedicated loopback or conference room mic) always active by excluding them from global mute.
 
 ## Installation & Requirements
@@ -34,13 +36,13 @@ MacMicControl is a powerful macOS utility that gives you complete control over y
 
 ### Building from Source
 1. Clone the repository.
-2. Open the project in Xcode.
+2. Open the project in Xcode (or use `swift build`).
 3. Build and Run.
 
 ## Usage
 
 1. **Launch the App**: The app lives in your menubar.
-2. **Open Settings**: Click the menubar icon and select "Settings" (or press `Cmd+,`).
+2. **Open Settings**: Click the menubar icon and select "Settings".
 3. **Set Permissions**: Grant Accessibility and Microphone access when prompted.
 4. **Configure Shortcuts**:
    - Go to the **General** tab to set your main Toggle Mute shortcut.
