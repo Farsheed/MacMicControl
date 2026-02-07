@@ -15,21 +15,20 @@ class OverlayWindow: NSWindow {
 class OverlayController: ObservableObject {
     private var window: OverlayWindow?
     private var timer: Timer?
-    
+
     func showOverlay(isMuted: Bool) {
         timer?.invalidate()
-        
+
         if window == nil {
             let width: CGFloat = 300
             let height: CGFloat = 100
-            
-            // Center of screen
+
             let screenRect = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
             let x = (screenRect.width - width) / 2
-            let y = (screenRect.height - height) / 2 + 100 // Slightly above center
-            
+            let y = (screenRect.height - height) / 2 + 100
+
             let rect = NSRect(x: x, y: y, width: width, height: height)
-            
+
             window = OverlayWindow(
                 contentRect: rect,
                 styleMask: [.borderless],
@@ -37,31 +36,30 @@ class OverlayController: ObservableObject {
                 defer: false
             )
         }
-        
+
         let contentView = OverlayView(isMuted: isMuted)
         window?.contentView = NSHostingView(rootView: contentView)
         window?.makeKeyAndOrderFront(nil)
         window?.alphaValue = 1.0
-        
-        // Hide after 2 seconds
+
         timer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { [weak self] _ in
             self?.fadeOut()
         }
     }
-    
+
     private func fadeOut() {
-        NSAnimationContext.runAnimationGroup { context in
+        NSAnimationContext.runAnimationGroup { [weak self] context in
             context.duration = 0.5
-            window?.animator().alphaValue = 0.0
-        } completionHandler: {
-            self.window?.orderOut(nil)
+            self?.window?.animator().alphaValue = 0.0
+        } completionHandler: { [weak self] in
+            self?.window?.orderOut(nil)
         }
     }
 }
 
 struct OverlayView: View {
     let isMuted: Bool
-    
+
     var body: some View {
         VStack {
             Image(systemName: isMuted ? "mic.slash.fill" : "mic.fill")
