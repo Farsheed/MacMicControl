@@ -12,9 +12,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var blinkTimer: Timer?
     var isBlinkVisible = true
 
-    // Debounced icon update
-    private var iconUpdateWorkItem: DispatchWorkItem?
-
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Setup Status Bar Item
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)

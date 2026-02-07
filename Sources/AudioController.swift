@@ -29,8 +29,9 @@ class AudioController: ObservableObject {
 
     private var currentDeviceID: AudioObjectID? {
         didSet {
-            DispatchQueue.main.async {
-                self.currentInputDeviceID = self.currentDeviceID ?? kAudioObjectUnknown
+            let newID = currentDeviceID ?? kAudioObjectUnknown
+            DispatchQueue.main.async { [weak self] in
+                self?.currentInputDeviceID = newID
             }
         }
     }

@@ -162,6 +162,7 @@ struct GeneralSettingsView: View {
 
 struct PTTSettingsView: View {
     @ObservedObject var settings = SettingsManager.shared
+    @EnvironmentObject var appState: AppState
     @State private var isRecordingToggle = false
     @State private var isRecordingAction = false
     @State private var showTestSheet = false
@@ -328,6 +329,7 @@ struct PTTSettingsView: View {
         }
         .sheet(isPresented: $showTestSheet) {
             TestPTTView(isPresented: $showTestSheet)
+                .environmentObject(appState)
         }
     }
 }
@@ -387,7 +389,7 @@ struct DevicesSettingsView: View {
                             
                             Spacer()
                             
-                            Toggle("", isOn: Binding(
+                            Toggle(device.name, isOn: Binding(
                                 get: { !settings.excludedDeviceUIDs.contains(device.uid) },
                                 set: { isEnabled in
                                     if isEnabled {
@@ -399,6 +401,7 @@ struct DevicesSettingsView: View {
                                     }
                                 }
                             ))
+                            .labelsHidden()
                             .toggleStyle(SwitchToggleStyle(tint: .blue))
                         }
                         .padding(.vertical, 4)
@@ -482,7 +485,6 @@ struct TestPTTView: View {
     @EnvironmentObject var appState: AppState
 
     @State private var isBlinking = false
-    @State private var blinkTimer: Timer?
 
     var body: some View {
         VStack(spacing: 30) {
@@ -490,7 +492,7 @@ struct TestPTTView: View {
                 Text("Push to Talk Test")
                     .font(.title2)
                     .bold()
-                
+
                 Text("Press and hold your PTT Action shortcut to test.")
                     .foregroundColor(.secondary)
             }
@@ -533,18 +535,7 @@ struct TestPTTView: View {
         }
         .padding(40)
         .frame(width: 400)
-        .onAppear {
-            startBlinkTimer()
-        }
-        .onDisappear {
-            blinkTimer?.invalidate()
-            blinkTimer = nil
-        }
-    }
-
-    func startBlinkTimer() {
-        blinkTimer?.invalidate()
-        blinkTimer = Timer.scheduledTimer(withTimeInterval: settings.pttBlinkInterval, repeats: true) { [self] _ in
+        .onReceive(Timer.publish(every: settings.pttBlinkInterval, on: .main, in: .common).autoconnect()) { _ in
             isBlinking.toggle()
         }
     }

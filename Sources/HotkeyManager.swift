@@ -1,6 +1,7 @@
 import Cocoa
 import Carbon
 import Combine
+import os.log
 
 protocol HotkeyDelegate: AnyObject {
     func toggleMuteHotkeyPressed()
@@ -12,6 +13,7 @@ protocol HotkeyDelegate: AnyObject {
 class HotkeyManager {
     weak var delegate: HotkeyDelegate?
     var eventHandler: EventHandlerRef?
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.macmiccontrol", category: "HotkeyManager")
 
     // Hotkey References
     var toggleMuteHotKeyRef: EventHotKeyRef?
@@ -111,7 +113,7 @@ class HotkeyManager {
         }, 2, &eventTypes, observer, &eventHandler)
 
         if status != noErr {
-            print("HotkeyManager: Failed to install event handler: \(status)")
+            logger.error("Failed to install event handler: \(status, privacy: .public)")
         }
     }
 
@@ -140,7 +142,7 @@ class HotkeyManager {
             }
             previousToggleMuteShortcut = shortcut
         } else {
-            print("HotkeyManager: Failed to register Toggle Mute: \(status)")
+            logger.error("Failed to register Toggle Mute hotkey: \(status, privacy: .public)")
             previousToggleMuteShortcut = shortcut
         }
     }
@@ -170,7 +172,7 @@ class HotkeyManager {
             }
             previousPTTToggleShortcut = shortcut
         } else {
-            print("HotkeyManager: Failed to register PTT Toggle: \(status)")
+            logger.error("Failed to register PTT Toggle hotkey: \(status, privacy: .public)")
             previousPTTToggleShortcut = shortcut
         }
     }
@@ -210,7 +212,7 @@ class HotkeyManager {
                 }
                 previousPTTActionShortcut = shortcut
             } else {
-                print("HotkeyManager: Failed to register PTT Action: \(status)")
+                logger.error("Failed to register PTT Action hotkey: \(status, privacy: .public)")
                 previousPTTActionShortcut = shortcut
             }
         }

@@ -4,6 +4,7 @@ import AppKit
 import SwiftUI
 import Combine
 import ServiceManagement
+import os.log
 
 struct AppKeyboardShortcut: Codable, Equatable {
     var keyCode: Int
@@ -109,6 +110,7 @@ struct AppKeyboardShortcut: Codable, Equatable {
 
 class SettingsManager: ObservableObject {
     static let shared = SettingsManager()
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.macmiccontrol", category: "SettingsManager")
 
     var launchAtLogin: Bool {
         get {
@@ -129,7 +131,7 @@ class SettingsManager: ObservableObject {
                     }
                     objectWillChange.send()
                 } catch {
-                    print("Failed to toggle launch at login: \(error)")
+                    logger.error("Failed to toggle launch at login: \(error.localizedDescription, privacy: .public)")
                 }
             }
         }
@@ -405,16 +407,9 @@ class SettingsManager: ObservableObject {
 
         self.generalAudioFeedback = UserDefaults.standard.bool(forKey: SettingsManager.kGeneralAudioFeedbackKey)
         self.generalVisualFeedback = UserDefaults.standard.object(forKey: SettingsManager.kGeneralVisualFeedbackKey) as? Bool ?? true
-        
-        let savedDuration = UserDefaults.standard.double(forKey: SettingsManager.kNotificationDurationKey)
-        // Check if key exists by comparing to default value logic or relying on the fact that double returns 0 if not found.
-        // But 0 is a valid value now.
-        // UserDefaults.double returns 0 if not found.
-        // We want default 1.5.
-        // If the user explicitly set it to 0, we should respect that.
-        // So we need to check object(forKey:) != nil
+
         if UserDefaults.standard.object(forKey: SettingsManager.kNotificationDurationKey) != nil {
-            self.notificationDuration = savedDuration
+            self.notificationDuration = UserDefaults.standard.double(forKey: SettingsManager.kNotificationDurationKey)
         } else {
             self.notificationDuration = 1.5
         }

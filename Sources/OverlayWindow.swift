@@ -50,20 +50,9 @@ class OverlayController: ObservableObject {
             window?.animator().alphaValue = 1.0
         }
 
-        if duration > 0 {
-            timer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
-                self?.fadeOut()
-            }
-        } else {
-             // If duration is 0, fade out immediately after fade in?
-             // Or maybe 0 implies "do not auto hide"?
-             // Given the range 0-10, likely 0 means "very short".
-             // If the user sets 0, they probably don't want to see it, but they have a toggle for that.
-             // Let's assume 0 means "don't auto hide" is NOT the standard interpretation for a "duration" slider unless specified.
-             // If I put 0 into timer, it fires immediately.
-             timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: false) { [weak self] _ in
-                self?.fadeOut()
-            }
+        let effectiveDuration = max(duration, 0.1)
+        timer = Timer.scheduledTimer(withTimeInterval: effectiveDuration, repeats: false) { [weak self] _ in
+            self?.fadeOut()
         }
     }
 
