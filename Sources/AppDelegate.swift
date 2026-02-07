@@ -77,9 +77,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Toggle Mute", action: #selector(toggleMuteAction), keyEquivalent: "m"))
+        let shortcut = SettingsManager.shared.shortcut
+        let toggleItem = NSMenuItem(title: "Toggle Mute", action: #selector(toggleMuteAction), keyEquivalent: shortcut.menuItemKeyEquivalent)
+        toggleItem.keyEquivalentModifierMask = shortcut.nsModifierFlags
+        menu.addItem(toggleItem)
+        
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
+        menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ""))
         return menu
     }
 
@@ -94,7 +98,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func showMenu() {
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Toggle Mute", action: #selector(toggleMuteAction), keyEquivalent: "m"))
+        
+        let shortcut = SettingsManager.shared.shortcut
+        let toggleItem = NSMenuItem(title: "Toggle Mute", action: #selector(toggleMuteAction), keyEquivalent: shortcut.menuItemKeyEquivalent)
+        toggleItem.keyEquivalentModifierMask = shortcut.nsModifierFlags
+        menu.addItem(toggleItem)
 
         // Microphone Selection
         let micMenu = NSMenu()
@@ -126,7 +134,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(blinkItem)
 
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
+        menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q"))
 
@@ -158,7 +166,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             )
             window.center()
             window.title = "Mac Mic Control Settings"
-            window.contentView = NSHostingView(rootView: SettingsView())
+            window.contentView = NSHostingView(rootView: SettingsView().environmentObject(appState))
             window.isReleasedWhenClosed = false
             settingsWindow = window
         }

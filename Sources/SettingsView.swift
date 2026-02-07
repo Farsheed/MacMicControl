@@ -22,7 +22,7 @@ struct SettingsView: View {
                 }
         }
         .padding()
-        .frame(minWidth: 500, minHeight: 600)
+        .frame(width: 550, height: 600)
         .alert(isPresented: $settings.showHotkeyAlert) {
             Alert(
                 title: Text("Shortcut Conflict"),
@@ -43,111 +43,119 @@ struct GeneralSettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(spacing: 20) {
                 if #available(macOS 13.0, *) {
-                    Toggle("Launch Mac Mic Control at login", isOn: Binding(
-                        get: { settings.launchAtLogin },
-                        set: { settings.launchAtLogin = $0 }
-                    ))
-
-                    Divider()
-                }
-
-                Text("Global Shortcut")
-                    .font(.headline)
-
-                HStack {
-                    Text("Toggle Mute Feature:")
-                    Spacer()
-                    ShortcutRecorderButton(shortcut: $settings.shortcut, isRecording: $isRecording)
-                }
-
-                Text("Note: Some system shortcuts cannot be overridden.")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.leading)
-
-                Divider()
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Icon Colors")
-                        .font(.headline)
-
-                    ColorPicker("Muted (Off) Background", selection: Binding(
-                        get: { Color(nsColor: settings.getMutedNSColor()) },
-                        set: { settings.setMutedColor(NSColor($0)) }
-                    ))
-
-                    ColorPicker("Live (On) Background", selection: Binding(
-                        get: { Color(nsColor: settings.getUnmutedNSColor()) },
-                        set: { settings.setUnmutedColor(NSColor($0)) }
-                    ))
-                }
-
-                Divider()
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Icon Size")
-                        .font(.headline)
-
-                    HStack {
-                        Image(systemName: "circle.fill")
-                            .font(.system(size: 8))
-                        Slider(value: $settings.iconScale, in: 0.5...1.5, step: 0.1)
-                        Image(systemName: "circle.fill")
-                            .font(.system(size: 18))
+                    GroupBox {
+                        Toggle("Launch Mac Mic Control at login", isOn: Binding(
+                            get: { settings.launchAtLogin },
+                            set: { settings.launchAtLogin = $0 }
+                        ))
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-
-                    Text("Scale: \(Int(settings.iconScale * 100))%")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
                 }
 
-                Divider()
+                GroupBox(label: Text("Global Shortcut")) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Toggle Mute")
+                            Spacer()
+                            ShortcutRecorderButton(shortcut: $settings.shortcut, isRecording: $isRecording)
+                        }
+                        
+                        Text("Note: Some system shortcuts cannot be overridden.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(4)
+                }
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Blink Rate (Live)")
-                        .font(.headline)
+                GroupBox(label: Text("Appearance")) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ColorPicker("Muted (Off) Background", selection: Binding(
+                            get: { Color(nsColor: settings.getMutedNSColor()) },
+                            set: { settings.setMutedColor(NSColor($0)) }
+                        ))
+                        
+                        ColorPicker("Live (On) Background", selection: Binding(
+                            get: { Color(nsColor: settings.getUnmutedNSColor()) },
+                            set: { settings.setUnmutedColor(NSColor($0)) }
+                        ))
 
-                    Toggle("Blink when Unmuted", isOn: $settings.generalBlinkEnabled)
+                        Divider()
 
-                    if settings.generalBlinkEnabled {
-                        VStack(alignment: .leading) {
+                        VStack(alignment: .leading, spacing: 4) {
                             HStack {
-                                Text("Rate: \(String(format: "%.0f", settings.generalBlinkInterval * 1000))ms")
+                                Text("Icon Scale")
                                 Spacer()
+                                Text("\(Int(settings.iconScale * 100))%")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
-                            Slider(value: $settings.generalBlinkInterval, in: 0.2...2.0, step: 0.1) {
-                                Text("Blink Rate")
-                            } minimumValueLabel: {
-                                Text("Fast")
-                            } maximumValueLabel: {
-                                Text("Slow")
+                            Slider(value: $settings.iconScale, in: 0.5...1.5, step: 0.1)
+                        }
+                        
+                        Divider()
+                        
+                        Toggle("Blink when Unmuted", isOn: $settings.generalBlinkEnabled)
+                        
+                        if settings.generalBlinkEnabled {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Blink Rate")
+                                    Spacer()
+                                    Text("\(String(format: "%.0f", settings.generalBlinkInterval * 1000))ms")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Slider(value: $settings.generalBlinkInterval, in: 0.2...2.0, step: 0.1) {
+                                    EmptyView()
+                                } minimumValueLabel: {
+                                    Text("Fast").font(.caption)
+                                } maximumValueLabel: {
+                                    Text("Slow").font(.caption)
+                                }
                             }
                         }
                     }
+                    .padding(4)
                 }
 
-                Divider()
+                GroupBox(label: Text("Feedback")) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Toggle("Visual notifications", isOn: $settings.generalVisualFeedback)
+                        
+                        if settings.generalVisualFeedback {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Duration")
+                                    Spacer()
+                                    Text("\(String(format: "%.1f", settings.notificationDuration))s")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Slider(value: $settings.notificationDuration, in: 0...10.0, step: 0.5) {
+                                    EmptyView()
+                                } minimumValueLabel: {
+                                    Text("0s").font(.caption)
+                                } maximumValueLabel: {
+                                    Text("10s").font(.caption)
+                                }
+                            }
+                            .padding(.leading, 20)
+                        }
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Feedback")
-                        .font(.headline)
+                        Toggle("Audio Feedback", isOn: $settings.generalAudioFeedback)
 
-                    Toggle("Visual notifications", isOn: $settings.generalVisualFeedback)
-                    Toggle("Audio Feedback (Beep/Click)", isOn: $settings.generalAudioFeedback)
-
-                    if settings.generalAudioFeedback {
-                        VStack(alignment: .leading) {
+                        if settings.generalAudioFeedback {
+                            Divider()
                             SoundPicker(label: "Mute Sound", selection: $settings.soundStandardMute)
                             SoundPicker(label: "Unmute Sound", selection: $settings.soundStandardUnmute)
                         }
-                        .padding(.leading)
                     }
+                    .padding(4)
                 }
             }
             .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
@@ -160,145 +168,160 @@ struct PTTSettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                // Master Toggle
-                Toggle("Enable Push to Talk", isOn: $settings.pttEnabled)
-                    .font(.headline)
-
-                Divider()
-
-                // Shortcuts
-                Group {
-                    Text("Shortcuts").font(.headline)
-
-                    HStack {
-                        Text("Toggle PTT Feature:")
-                        Spacer()
-                        ShortcutRecorderButton(shortcut: $settings.pttToggleShortcut, isRecording: $isRecordingToggle)
-                    }
-
-                    HStack {
-                        Text("PTT Action (Hold):")
-                        Spacer()
-                        ShortcutRecorderButton(shortcut: $settings.pttActionShortcut, isRecording: $isRecordingAction)
-                    }
-
-                    if settings.pttToggleShortcut == settings.pttActionShortcut {
-                        Text("Warning: Same shortcut assigned to both actions.")
-                            .foregroundColor(.red)
-                            .font(.caption)
-                    }
+            VStack(spacing: 20) {
+                GroupBox {
+                    Toggle("Enable Push to Talk", isOn: $settings.pttEnabled)
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .disabled(!settings.pttEnabled)
 
-                Group {
-                    Divider()
+                if settings.pttEnabled {
+                    GroupBox(label: Text("Shortcuts")) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("Toggle PTT Mode")
+                                Spacer()
+                                ShortcutRecorderButton(shortcut: $settings.pttToggleShortcut, isRecording: $isRecordingToggle)
+                            }
 
-                    // Timing / Delay
-                    Group {
-                        Text("Timing").font(.headline)
+                            HStack {
+                                Text("PTT Action (Hold)")
+                                Spacer()
+                                ShortcutRecorderButton(shortcut: $settings.pttActionShortcut, isRecording: $isRecordingAction)
+                            }
 
-                        HStack {
-                             Text("Delay Mute: \(String(format: "%.0f", settings.pttReleaseDelay))s")
-                             Spacer()
+                            if settings.pttToggleShortcut == settings.pttActionShortcut {
+                                Text("Warning: Same shortcut assigned to both actions.")
+                                    .foregroundColor(.red)
+                                    .font(.caption)
+                            }
                         }
-                        Slider(value: $settings.pttReleaseDelay, in: 0...30.0, step: 1.0) {
-                            Text("Delay Mute")
-                        } minimumValueLabel: {
-                            Text("0s")
-                        } maximumValueLabel: {
-                            Text("30s")
-                        }
-
-                        Text("Time to wait before muting after releasing the key.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        .padding(4)
                     }
-                    .disabled(!settings.pttEnabled)
 
-                    Divider()
-
-                    // Appearance
-                    Group {
-                        Text("Appearance").font(.headline)
-
-                        Toggle("Blink when Active", isOn: $settings.pttBlinkEnabled)
-
-                        if settings.pttBlinkEnabled {
-                            ColorPicker("Blink Color (Active)", selection: Binding(
-                                get: { Color(nsColor: settings.getPTTBlinkNSColor()) },
-                                set: { settings.setPTTBlinkColor(NSColor($0)) }
-                            ))
+                    GroupBox(label: Text("Timing")) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Delay Mute")
+                                Spacer()
+                                Text("\(String(format: "%.0f", settings.pttReleaseDelay))s")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Slider(value: $settings.pttReleaseDelay, in: 0...30.0, step: 1.0) {
+                                EmptyView()
+                            } minimumValueLabel: {
+                                Text("0s").font(.caption)
+                            } maximumValueLabel: {
+                                Text("30s").font(.caption)
+                            }
+                            
+                            Text("Time to wait before muting after releasing the key.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.top, 4)
                         }
+                        .padding(4)
+                    }
 
-                        ColorPicker("Inactive Background", selection: Binding(
-                            get: { Color(nsColor: settings.getPTTInactiveBackgroundNSColor()) },
-                            set: { settings.setPTTInactiveBackgroundColor(NSColor($0)) }
-                        ))
+                    GroupBox(label: Text("Appearance")) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Toggle("Blink when Active", isOn: $settings.pttBlinkEnabled)
 
-                        ColorPicker("Inactive Icon", selection: Binding(
-                            get: { Color(nsColor: settings.getPTTInactiveIconNSColor()) },
-                            set: { settings.setPTTInactiveIconColor(NSColor($0)) }
-                        ))
+                            if settings.pttBlinkEnabled {
+                                ColorPicker("Blink Color (Active)", selection: Binding(
+                                    get: { Color(nsColor: settings.getPTTBlinkNSColor()) },
+                                    set: { settings.setPTTBlinkColor(NSColor($0)) }
+                                ))
+                            }
 
-                        if settings.pttBlinkEnabled {
-                            VStack(alignment: .leading) {
-                                HStack {
-                                    Text("Blink Rate: \(String(format: "%.0f", settings.pttBlinkInterval * 1000))ms")
-                                    Spacer()
-                                }
-                                Slider(value: $settings.pttBlinkInterval, in: 0.2...1.0, step: 0.1) {
-                                    Text("Blink Rate")
-                                } minimumValueLabel: {
-                                    Text("Fast")
-                                } maximumValueLabel: {
-                                    Text("Slow")
+                            ColorPicker("Inactive Background", selection: Binding(
+                                get: { Color(nsColor: settings.getPTTInactiveBackgroundNSColor()) },
+                                set: { settings.setPTTInactiveBackgroundColor(NSColor($0)) }
+                            ))
+
+                            ColorPicker("Inactive Icon", selection: Binding(
+                                get: { Color(nsColor: settings.getPTTInactiveIconNSColor()) },
+                                set: { settings.setPTTInactiveIconColor(NSColor($0)) }
+                            ))
+                            
+                            if settings.pttBlinkEnabled {
+                                Divider()
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        Text("Blink Rate")
+                                        Spacer()
+                                        Text("\(String(format: "%.0f", settings.pttBlinkInterval * 1000))ms")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Slider(value: $settings.pttBlinkInterval, in: 0.2...1.0, step: 0.1) {
+                                        EmptyView()
+                                    } minimumValueLabel: {
+                                        Text("Fast").font(.caption)
+                                    } maximumValueLabel: {
+                                        Text("Slow").font(.caption)
+                                    }
                                 }
                             }
                         }
+                        .padding(4)
                     }
-                    .disabled(!settings.pttEnabled)
 
-                    Divider()
+                    GroupBox(label: Text("Feedback")) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Toggle("Visual notifications", isOn: $settings.pttVisualFeedback)
+                            
+                            if settings.pttVisualFeedback {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        Text("Duration")
+                                        Spacer()
+                                        Text("\(String(format: "%.1f", settings.pttNotificationDuration))s")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Slider(value: $settings.pttNotificationDuration, in: 0...10.0, step: 0.5) {
+                                        EmptyView()
+                                    } minimumValueLabel: {
+                                        Text("0s").font(.caption)
+                                    } maximumValueLabel: {
+                                        Text("10s").font(.caption)
+                                    }
+                                }
+                                .padding(.leading, 20)
+                            }
 
-                    // Feedback
-                    Group {
-                        Text("Feedback").font(.headline)
-                        Toggle("Visual notifications", isOn: $settings.pttVisualFeedback)
-                        Toggle("Audio Feedback", isOn: $settings.pttAudioFeedback)
+                            Toggle("Audio Feedback", isOn: $settings.pttAudioFeedback)
 
-                        if settings.pttAudioFeedback {
-                            VStack(alignment: .leading) {
+                            if settings.pttAudioFeedback {
+                                Divider()
                                 SoundPicker(label: "Press (Activate)", selection: $settings.soundPTTActivate)
                                 SoundPicker(label: "Release (Deactivate)", selection: $settings.soundPTTDeactivate)
                             }
-                            .padding(.leading)
+                        }
+                        .padding(4)
+                    }
+
+                    HStack {
+                        Button("Reset to Defaults") {
+                            settings.pttEnabled = false
+                            settings.pttToggleShortcut = AppKeyboardShortcut(keyCode: kVK_ANSI_P, modifiers: cmdKey | shiftKey)
+                            settings.pttActionShortcut = AppKeyboardShortcut(keyCode: kVK_Space, modifiers: optionKey)
+                            settings.setPTTBlinkColor(.yellow)
+                            settings.setPTTInactiveBackgroundColor(.black)
+                            settings.setPTTInactiveIconColor(.white)
+                            settings.pttBlinkInterval = 0.5
+                            settings.pttAudioFeedback = false
+                        }
+
+                        Spacer()
+
+                        Button("Test PTT") {
+                            showTestSheet = true
                         }
                     }
-                    .disabled(!settings.pttEnabled)
-                }
-
-                Divider()
-
-                // Test & Reset
-                HStack {
-                    Button("Reset to Defaults") {
-                        settings.pttEnabled = false
-                        settings.pttToggleShortcut = AppKeyboardShortcut(keyCode: kVK_ANSI_P, modifiers: cmdKey | shiftKey)
-                        settings.pttActionShortcut = AppKeyboardShortcut(keyCode: kVK_Space, modifiers: optionKey)
-                        settings.setPTTBlinkColor(.yellow)
-                        settings.setPTTInactiveBackgroundColor(.black)
-                        settings.setPTTInactiveIconColor(.white)
-                        settings.pttBlinkInterval = 0.5
-                        settings.pttAudioFeedback = false
-                    }
-
-                    Spacer()
-
-                    Button("Test PTT") {
-                        showTestSheet = true
-                    }
-                    .disabled(!settings.pttEnabled)
+                    .padding(.top, 10)
                 }
             }
             .padding()
@@ -309,94 +332,207 @@ struct PTTSettingsView: View {
     }
 }
 
+struct DevicesSettingsView: View {
+    @ObservedObject var settings = SettingsManager.shared
+    @EnvironmentObject var appState: AppState
+
+    var body: some View {
+        let audioController = appState.audioController
+        
+        VStack(spacing: 0) {
+            // System Input Header
+            VStack(alignment: .leading, spacing: 8) {
+                Text("System Input")
+                    .font(.headline)
+                
+                HStack {
+                    Image(systemName: "mic.fill")
+                        .foregroundColor(.secondary)
+                    
+                    Picker("", selection: Binding(
+                        get: { audioController.currentInputDeviceID },
+                        set: { newID in
+                            if let device = audioController.availableInputDevices.first(where: { $0.id == newID }) {
+                                audioController.setDefaultInputDevice(device)
+                            }
+                        }
+                    )) {
+                        ForEach(audioController.availableInputDevices) { device in
+                            Text(device.name).tag(device.id)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .padding()
+            .background(Color(nsColor: .controlBackgroundColor))
+            
+            Divider()
+            
+            // Device List
+            List {
+                Section(header: Text("Compatible Devices").font(.subheadline)) {
+                    ForEach(audioController.availableInputDevices) { device in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(device.name)
+                                    .font(.body)
+                                Text("UID: \(device.uid)")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            }
+                            
+                            Spacer()
+                            
+                            Toggle("", isOn: Binding(
+                                get: { !settings.excludedDeviceUIDs.contains(device.uid) },
+                                set: { isEnabled in
+                                    if isEnabled {
+                                        settings.excludedDeviceUIDs.removeAll { $0 == device.uid }
+                                    } else {
+                                        if !settings.excludedDeviceUIDs.contains(device.uid) {
+                                            settings.excludedDeviceUIDs.append(device.uid)
+                                        }
+                                    }
+                                }
+                            ))
+                            .toggleStyle(SwitchToggleStyle(tint: .blue))
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+                
+                Section {
+                        Text("Disable a device to prevent Mac Mic Control from muting it.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .listStyle(.inset)
+        }
+    }
+}
+
 struct ShortcutRecorderButton: View {
     @Binding var shortcut: AppKeyboardShortcut
     @Binding var isRecording: Bool
 
     var body: some View {
         HStack {
-            ZStack {
-                Text(shortcut.description)
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
-                    .frame(width: 140, alignment: .center)
-                    .padding(.vertical, 4)
-                    .background(Color.gray.opacity(0.2))
-                    .cornerRadius(4)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(isRecording ? Color.blue : Color.clear, lineWidth: 2)
-                    )
-
-                if isRecording {
-                    ShortcutRecorder(isRecording: $isRecording) { keyCode, modifiers in
-                        let newShortcut = AppKeyboardShortcut(keyCode: keyCode, modifiers: modifiers)
-                        shortcut = newShortcut
-                        if !newShortcut.isModifier {
-                            isRecording = false
-                        }
-                    }
-                    .frame(width: 140, height: 30)
-                    .opacity(0.01)
-                }
-            }
-
-            Button(isRecording ? "Press Keys..." : "Change") {
+            Button(action: {
                 isRecording.toggle()
+            }) {
+                HStack {
+                    if isRecording {
+                        Image(systemName: "record.circle")
+                            .foregroundColor(.red)
+                            .animateForever()
+                        Text("Press keys...")
+                    } else {
+                        Image(systemName: "keyboard")
+                        Text(shortcut.description.isEmpty ? "Click to set" : shortcut.description)
+                    }
+                }
+                .frame(minWidth: 120)
             }
             .buttonStyle(.bordered)
+            .overlay(
+                // Invisible recorder view when recording
+                Group {
+                    if isRecording {
+                        ShortcutRecorder(isRecording: $isRecording) { keyCode, modifiers in
+                            let newShortcut = AppKeyboardShortcut(keyCode: keyCode, modifiers: modifiers)
+                            shortcut = newShortcut
+                            if !newShortcut.isModifier {
+                                isRecording = false
+                            }
+                        }
+                        .frame(width: 1, height: 1)
+                        .opacity(0.01)
+                    }
+                }
+            )
         }
+    }
+}
+
+extension View {
+    func animateForever() -> some View {
+        self.modifier(InfiniteAnimationModifier())
+    }
+}
+
+struct InfiniteAnimationModifier: ViewModifier {
+    @State private var isAnimating = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(isAnimating ? 0.5 : 1.0)
+            .animation(Animation.easeInOut(duration: 0.8).repeatForever(), value: isAnimating)
+            .onAppear { isAnimating = true }
     }
 }
 
 struct TestPTTView: View {
     @Binding var isPresented: Bool
     @ObservedObject var settings = SettingsManager.shared
-
-    // Use the live AppState from the AppDelegate — never create a fallback
-    private var appState: AppState? {
-        (NSApp.delegate as? AppDelegate)?.appState
-    }
+    @EnvironmentObject var appState: AppState
 
     @State private var isBlinking = false
     @State private var blinkTimer: Timer?
 
     var body: some View {
         VStack(spacing: 30) {
-            Text("Push to Talk Test")
-                .font(.title)
-                .bold()
-
-            Text("Press and hold your PTT Action shortcut to test.")
-                .foregroundColor(.secondary)
+            VStack(spacing: 10) {
+                Text("Push to Talk Test")
+                    .font(.title2)
+                    .bold()
+                
+                Text("Press and hold your PTT Action shortcut to test.")
+                    .foregroundColor(.secondary)
+            }
 
             ZStack {
                 Circle()
                     .fill(currentBackgroundColor)
-                    .frame(width: 100, height: 100)
+                    .frame(width: 120, height: 120)
+                    .shadow(radius: 5)
 
                 Image(systemName: currentIconName)
-                    .font(.system(size: 50))
+                    .font(.system(size: 60))
                     .foregroundColor(currentIconColor)
             }
-            .shadow(radius: 5)
+            .frame(height: 150)
 
-            if appState?.isPTTActive == true {
-                Text("MIC LIVE")
-                    .font(.headline)
-                    .foregroundColor(.red)
-            } else {
-                Text("MIC MUTED")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
+            VStack(spacing: 5) {
+                if appState.isPTTActive {
+                    Text("MIC LIVE")
+                        .font(.headline)
+                        .foregroundColor(.red)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(Color.red.opacity(0.1)))
+                } else {
+                    Text("MIC MUTED")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(Color.gray.opacity(0.1)))
+                }
             }
 
             Button("Close") {
                 isPresented = false
             }
             .keyboardShortcut(.cancelAction)
+            .buttonStyle(.borderedProminent)
         }
-        .padding()
-        .frame(width: 400, height: 350)
+        .padding(40)
+        .frame(width: 400)
         .onAppear {
             startBlinkTimer()
         }
@@ -414,7 +550,7 @@ struct TestPTTView: View {
     }
 
     var currentBackgroundColor: Color {
-        if appState?.isPTTActive == true {
+        if appState.isPTTActive {
             if settings.pttBlinkEnabled {
                 return isBlinking ? Color(nsColor: settings.getPTTBlinkNSColor()) : Color(nsColor: settings.getUnmutedNSColor())
             } else {
@@ -426,7 +562,7 @@ struct TestPTTView: View {
     }
 
     var currentIconColor: Color {
-        if appState?.isPTTActive == true {
+        if appState.isPTTActive {
             return .white
         } else {
             return Color(nsColor: settings.getPTTInactiveIconNSColor())
@@ -434,98 +570,10 @@ struct TestPTTView: View {
     }
 
     var currentIconName: String {
-        if appState?.isPTTActive == true {
+        if appState.isPTTActive {
             return "mic.fill"
         } else {
             return "mic.slash.fill"
-        }
-    }
-}
-
-struct DevicesSettingsView: View {
-    @ObservedObject var settings = SettingsManager.shared
-
-    // Use the live AudioController from AppDelegate — never create a fallback
-    private var audioController: AudioController? {
-        (NSApp.delegate as? AppDelegate)?.appState.audioController
-    }
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                if let audioController = audioController {
-                    // System Input Selection
-                    HStack {
-                        Text("System input")
-                            .font(.headline)
-                        Spacer()
-
-                        Picker("", selection: Binding(
-                            get: { audioController.getDefaultInputDeviceID() ?? 0 },
-                            set: { newID in
-                                if let device = audioController.availableInputDevices.first(where: { $0.id == newID }) {
-                                    audioController.setDefaultInputDevice(device)
-                                }
-                            }
-                        )) {
-                            ForEach(audioController.availableInputDevices) { device in
-                                Text(device.name).tag(device.id)
-                            }
-                        }
-                        .labelsHidden()
-                        .frame(width: 200)
-                    }
-                    .padding()
-                    .background(Color(nsColor: .controlBackgroundColor))
-                    .cornerRadius(10)
-
-                    Divider()
-
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("Compatible devices")
-                            .font(.headline)
-                        Text("Disable a device to prevent Mac Mic Control muting it.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-
-                    VStack(spacing: 0) {
-                        ForEach(audioController.availableInputDevices) { device in
-                            HStack {
-                                Text(device.name)
-                                Spacer()
-                                Toggle("", isOn: Binding(
-                                    get: { !settings.excludedDeviceUIDs.contains(device.uid) },
-                                    set: { isEnabled in
-                                        if isEnabled {
-                                            settings.excludedDeviceUIDs.removeAll { $0 == device.uid }
-                                        } else {
-                                            if !settings.excludedDeviceUIDs.contains(device.uid) {
-                                                settings.excludedDeviceUIDs.append(device.uid)
-                                            }
-                                        }
-                                    }
-                                ))
-                                .toggleStyle(SwitchToggleStyle(tint: .red))
-                            }
-                            .padding()
-                            .background(Color(nsColor: .controlBackgroundColor))
-
-                            if device != audioController.availableInputDevices.last {
-                                Divider()
-                                    .padding(.leading)
-                            }
-                        }
-                    }
-                    .cornerRadius(10)
-                } else {
-                    Text("Unable to access audio controller.")
-                        .foregroundColor(.secondary)
-                }
-
-                Spacer()
-            }
-            .padding()
         }
     }
 }
@@ -560,9 +608,7 @@ struct SoundPicker: View {
     var body: some View {
         HStack {
             Text(label)
-
             Spacer()
-
             Picker("", selection: $selection) {
                 ForEach(SettingsManager.shared.availableSounds, id: \.self) { sound in
                     Text(sound).tag(sound)

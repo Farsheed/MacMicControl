@@ -2,6 +2,7 @@ import SwiftUI
 import Combine
 import AVFoundation
 import UserNotifications
+import os.log
 
 class AppState: ObservableObject, HotkeyDelegate {
     @Published var audioController = AudioController()
@@ -11,6 +12,7 @@ class AppState: ObservableObject, HotkeyDelegate {
 
     var hotkeyManager: HotkeyManager?
 
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.macmiccontrol", category: "AppState")
     private var cancellables = Set<AnyCancellable>()
     private var lastToggleTime: TimeInterval = 0
     private var pttReleaseTimer: Timer?
@@ -28,9 +30,9 @@ class AppState: ObservableObject, HotkeyDelegate {
             self?.handleDeviceDisconnected()
         }
 
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, error in
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { [weak self] _, error in
             if let error = error {
-                print("Notification auth error: \(error)")
+                self?.logger.error("Notification auth error: \(error.localizedDescription, privacy: .public)")
             }
         }
 
@@ -43,11 +45,17 @@ class AppState: ObservableObject, HotkeyDelegate {
 
                     if self.isPTTActive {
                         if SettingsManager.shared.pttVisualFeedback {
-                            self.overlayController.showOverlay(isMuted: isMuted)
+                            self.overlayController.showOverlay(
+                                isMuted: isMuted,
+                                duration: SettingsManager.shared.pttNotificationDuration
+                            )
                         }
                     } else {
                         if SettingsManager.shared.generalVisualFeedback {
-                            self.overlayController.showOverlay(isMuted: isMuted)
+                            self.overlayController.showOverlay(
+                                isMuted: isMuted,
+                                duration: SettingsManager.shared.notificationDuration
+                            )
                         }
                     }
                 }
@@ -94,9 +102,9 @@ class AppState: ObservableObject, HotkeyDelegate {
         content.title = title
         content.body = message
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-        UNUserNotificationCenter.current().add(request) { error in
+        UNUserNotificationCenter.current().add(request) { [weak self] error in
             if let error = error {
-                print("Error showing notification: \(error)")
+                self?.logger.error("Error showing notification: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

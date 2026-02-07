@@ -29,7 +29,23 @@ struct AppKeyboardShortcut: Codable, Equatable {
         return str
     }
 
-    private func keyString(for code: Int) -> String {
+    var nsModifierFlags: NSEvent.ModifierFlags {
+        var flags: NSEvent.ModifierFlags = []
+        if (modifiers & cmdKey) != 0 { flags.insert(.command) }
+        if (modifiers & shiftKey) != 0 { flags.insert(.shift) }
+        if (modifiers & optionKey) != 0 { flags.insert(.option) }
+        if (modifiers & controlKey) != 0 { flags.insert(.control) }
+        return flags
+    }
+
+    var menuItemKeyEquivalent: String {
+        switch keyCode {
+        case kVK_Space: return " "
+        default: return keyString(for: keyCode).lowercased()
+        }
+    }
+
+    func keyString(for code: Int) -> String {
         switch code {
         case kVK_ANSI_A: return "A"
         case kVK_ANSI_S: return "S"
@@ -210,8 +226,16 @@ class SettingsManager: ObservableObject {
         didSet { UserDefaults.standard.set(generalVisualFeedback, forKey: SettingsManager.kGeneralVisualFeedbackKey) }
     }
 
+    @Published var notificationDuration: Double {
+        didSet { UserDefaults.standard.set(notificationDuration, forKey: SettingsManager.kNotificationDurationKey) }
+    }
+
     @Published var pttVisualFeedback: Bool {
         didSet { UserDefaults.standard.set(pttVisualFeedback, forKey: SettingsManager.kPTTVisualFeedbackKey) }
+    }
+
+    @Published var pttNotificationDuration: Double {
+        didSet { UserDefaults.standard.set(pttNotificationDuration, forKey: SettingsManager.kPTTNotificationDurationKey) }
     }
 
     @Published var excludedDeviceUIDs: [String] {
@@ -294,8 +318,10 @@ class SettingsManager: ObservableObject {
     private static let kPTTReleaseDelayKey = "pttReleaseDelay"
     private static let kPTTAudioFeedbackKey = "pttAudioFeedback"
     private static let kPTTVisualFeedbackKey = "pttVisualFeedback"
+    private static let kPTTNotificationDurationKey = "pttNotificationDuration"
     private static let kGeneralAudioFeedbackKey = "generalAudioFeedback"
     private static let kGeneralVisualFeedbackKey = "generalVisualFeedback"
+    private static let kNotificationDurationKey = "notificationDuration"
     private static let kGeneralBlinkEnabledKey = "generalBlinkEnabled"
     private static let kGeneralBlinkIntervalKey = "generalBlinkInterval"
 
@@ -370,8 +396,28 @@ class SettingsManager: ObservableObject {
 
         self.pttAudioFeedback = UserDefaults.standard.bool(forKey: SettingsManager.kPTTAudioFeedbackKey)
         self.pttVisualFeedback = UserDefaults.standard.object(forKey: SettingsManager.kPTTVisualFeedbackKey) as? Bool ?? true
+        
+        if UserDefaults.standard.object(forKey: SettingsManager.kPTTNotificationDurationKey) != nil {
+            self.pttNotificationDuration = UserDefaults.standard.double(forKey: SettingsManager.kPTTNotificationDurationKey)
+        } else {
+            self.pttNotificationDuration = 1.5
+        }
+
         self.generalAudioFeedback = UserDefaults.standard.bool(forKey: SettingsManager.kGeneralAudioFeedbackKey)
         self.generalVisualFeedback = UserDefaults.standard.object(forKey: SettingsManager.kGeneralVisualFeedbackKey) as? Bool ?? true
+        
+        let savedDuration = UserDefaults.standard.double(forKey: SettingsManager.kNotificationDurationKey)
+        // Check if key exists by comparing to default value logic or relying on the fact that double returns 0 if not found.
+        // But 0 is a valid value now.
+        // UserDefaults.double returns 0 if not found.
+        // We want default 1.5.
+        // If the user explicitly set it to 0, we should respect that.
+        // So we need to check object(forKey:) != nil
+        if UserDefaults.standard.object(forKey: SettingsManager.kNotificationDurationKey) != nil {
+            self.notificationDuration = savedDuration
+        } else {
+            self.notificationDuration = 1.5
+        }
 
         self.generalBlinkEnabled = UserDefaults.standard.object(forKey: SettingsManager.kGeneralBlinkEnabledKey) as? Bool ?? true
         let savedGeneralInterval = UserDefaults.standard.double(forKey: SettingsManager.kGeneralBlinkIntervalKey)

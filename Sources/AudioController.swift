@@ -1,10 +1,17 @@
 import Foundation
 import CoreAudio
 import AudioToolbox
+import os.log
 
 extension Notification.Name {
     static let inputDeviceDisconnected = Notification.Name("inputDeviceDisconnected")
     static let inputDevicesChanged = Notification.Name("inputDevicesChanged")
+}
+
+enum AudioError: Error {
+    case deviceNotFound
+    case propertyError(OSStatus)
+    case unknown
 }
 
 struct InputDevice: Identifiable, Equatable {
@@ -16,8 +23,17 @@ struct InputDevice: Identifiable, Equatable {
 class AudioController: ObservableObject {
     @Published var isMuted: Bool = false
     @Published var availableInputDevices: [InputDevice] = []
+    @Published var currentInputDeviceID: AudioObjectID = kAudioObjectUnknown
 
-    private var currentDeviceID: AudioObjectID?
+    private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.macmiccontrol", category: "AudioController")
+
+    private var currentDeviceID: AudioObjectID? {
+        didSet {
+            DispatchQueue.main.async {
+                self.currentInputDeviceID = self.currentDeviceID ?? kAudioObjectUnknown
+            }
+        }
+    }
     private var defaultDeviceListenerBlock: AudioObjectPropertyListenerBlock?
     private var deviceListListenerBlock: AudioObjectPropertyListenerBlock?
     private var muteListenerBlock: AudioObjectPropertyListenerBlock?
@@ -47,7 +63,7 @@ class AudioController: ObservableObject {
 
         let status = AudioObjectSetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, size, &deviceID)
         if status != noErr {
-            print("Error setting default input device: \(status)")
+            logger.error("Error setting default input device: \(status, privacy: .public)")
         }
     }
 
@@ -62,7 +78,7 @@ class AudioController: ObservableObject {
         var status = AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size)
 
         guard status == noErr else {
-            print("Error getting device list size: \(status)")
+            logger.error("Error getting device list size: \(status, privacy: .public)")
             return
         }
 
@@ -72,7 +88,7 @@ class AudioController: ObservableObject {
         status = AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &deviceIDs)
 
         guard status == noErr else {
-            print("Error getting device list: \(status)")
+            logger.error("Error getting device list: \(status, privacy: .public)")
             return
         }
 
@@ -100,7 +116,9 @@ class AudioController: ObservableObject {
                 var name: CFString = "" as CFString
                 var nameSize = UInt32(MemoryLayout<CFString>.size)
 
-                status = AudioObjectGetPropertyData(id, &nameAddress, 0, nil, &nameSize, &name)
+                status = withUnsafeMutablePointer(to: &name) { namePtr in
+                    AudioObjectGetPropertyData(id, &nameAddress, 0, nil, &nameSize, namePtr)
+                }
 
                 // Get persistent UID
                 let uid = Self.getDeviceUID(for: id) ?? "unknown-\(id)"
@@ -111,8 +129,8 @@ class AudioController: ObservableObject {
             }
         }
 
-        DispatchQueue.main.async {
-            self.availableInputDevices = inputDevices
+        DispatchQueue.main.async { [weak self] in
+            self?.availableInputDevices = inputDevices
         }
     }
 
@@ -127,7 +145,10 @@ class AudioController: ObservableObject {
         var uid: CFString = "" as CFString
         var size = UInt32(MemoryLayout<CFString>.size)
 
-        let status = AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, &uid)
+        let status = withUnsafeMutablePointer(to: &uid) { uidPtr in
+            AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, uidPtr)
+        }
+        
         if status == noErr {
             return uid as String
         }
@@ -140,12 +161,15 @@ class AudioController: ObservableObject {
     }
 
     func setMute(_ mute: Bool) {
-        guard let deviceID = getDefaultInputDeviceID() else { return }
+        guard let deviceID = getDefaultInputDeviceID() else {
+            logger.warning("No default input device found when trying to mute")
+            return
+        }
 
         // Check exclusion using persistent UID
         if let uid = Self.getDeviceUID(for: deviceID),
            SettingsManager.shared.excludedDeviceUIDs.contains(uid) {
-            print("Device \(uid) is excluded from muting.")
+            logger.info("Device \(uid, privacy: .public) is excluded from muting.")
             return
         }
 
@@ -160,18 +184,18 @@ class AudioController: ObservableObject {
 
         let status = AudioObjectSetPropertyData(deviceID, &address, 0, nil, size, &muteValue)
         if status == noErr {
-            DispatchQueue.main.async {
-                self.isMuted = mute
+            DispatchQueue.main.async { [weak self] in
+                self?.isMuted = mute
             }
         } else {
-            print("Error setting mute status: \(status)")
+            logger.error("Error setting mute status: \(status, privacy: .public)")
         }
     }
 
     func checkMuteStatus() {
         guard let deviceID = getDefaultInputDeviceID() else {
-            DispatchQueue.main.async {
-                self.isMuted = true
+            DispatchQueue.main.async { [weak self] in
+                self?.isMuted = true
             }
             return
         }
@@ -187,9 +211,11 @@ class AudioController: ObservableObject {
 
         let status = AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, &muteValue)
         if status == noErr {
-            DispatchQueue.main.async {
-                self.isMuted = (muteValue == 1)
+            DispatchQueue.main.async { [weak self] in
+                self?.isMuted = (muteValue == 1)
             }
+        } else {
+            logger.error("Error getting mute status: \(status, privacy: .public)")
         }
     }
 
@@ -239,7 +265,7 @@ class AudioController: ObservableObject {
 
         var status = AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &defaultDeviceAddress, nil, defaultDeviceListener)
         if status != noErr {
-            print("Error adding default device listener: \(status)")
+            logger.error("Error adding default device listener: \(status, privacy: .public)")
         }
 
         // Monitor Device List changes (added/removed)
@@ -250,13 +276,15 @@ class AudioController: ObservableObject {
         )
 
         let deviceListListener: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
-            self?.refreshInputDevices()
+            self?.audioQueue.async {
+                self?.refreshInputDevices()
+            }
         }
         self.deviceListListenerBlock = deviceListListener
 
         status = AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &deviceListAddress, nil, deviceListListener)
         if status != noErr {
-            print("Error adding device list listener: \(status)")
+            logger.error("Error adding device list listener: \(status, privacy: .public)")
         }
 
         // Initial setup
@@ -329,13 +357,15 @@ class AudioController: ObservableObject {
         )
 
         let listenerBlock: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
-            self?.checkMuteStatus()
+            self?.audioQueue.async {
+                self?.checkMuteStatus()
+            }
         }
         self.muteListenerBlock = listenerBlock
 
         let status = AudioObjectAddPropertyListenerBlock(deviceID, &address, nil, listenerBlock)
         if status != noErr {
-            print("Error adding mute listener: \(status)")
+            logger.error("Error adding mute listener: \(status, privacy: .public)")
         }
     }
 
