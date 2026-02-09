@@ -10,11 +10,13 @@ build_and_package() {
     DMG_SUFFIX=$2
     
     echo "================================================"
-    echo "Packaging for $DMG_SUFFIX ($ARCH)..."
+    echo "Building and Packaging for $DMG_SUFFIX ($ARCH)..."
     echo "================================================"
 
-    # Assuming builds are already done manually to avoid sandbox issues
-    # BIN_PATH=$(swift build -c release --arch "$ARCH" --show-bin-path)
+    # Build
+    swift build -c release --arch "$ARCH"
+    
+    # Path to binary
     BIN_PATH=".build/${ARCH}-apple-macosx/release"
     BINARY="$BIN_PATH/$EXECUTABLE_NAME"
     
