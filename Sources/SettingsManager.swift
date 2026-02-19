@@ -164,7 +164,15 @@ class SettingsManager: ObservableObject {
     }
 
     @Published var pttEnabled: Bool {
-        didSet { UserDefaults.standard.set(pttEnabled, forKey: SettingsManager.kPTTEnabledKey) }
+        didSet {
+            UserDefaults.standard.set(pttEnabled, forKey: SettingsManager.kPTTEnabledKey)
+        }
+    }
+
+    @Published var ptmEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(ptmEnabled, forKey: SettingsManager.kPTMEnabledKey)
+        }
     }
 
     @Published var pttToggleShortcut: AppKeyboardShortcut {
@@ -179,6 +187,14 @@ class SettingsManager: ObservableObject {
         didSet {
              if let encoded = try? JSONEncoder().encode(pttActionShortcut) {
                 UserDefaults.standard.set(encoded, forKey: SettingsManager.kPTTActionShortcutKey)
+            }
+        }
+    }
+
+    @Published var ptmActionShortcut: AppKeyboardShortcut {
+        didSet {
+             if let encoded = try? JSONEncoder().encode(ptmActionShortcut) {
+                UserDefaults.standard.set(encoded, forKey: SettingsManager.kPTMActionShortcutKey)
             }
         }
     }
@@ -216,8 +232,16 @@ class SettingsManager: ObservableObject {
         didSet { UserDefaults.standard.set(pttReleaseDelay, forKey: SettingsManager.kPTTReleaseDelayKey) }
     }
 
+    @Published var ptmReleaseDelay: Double {
+        didSet { UserDefaults.standard.set(ptmReleaseDelay, forKey: SettingsManager.kPTMReleaseDelayKey) }
+    }
+
     @Published var pttAudioFeedback: Bool {
         didSet { UserDefaults.standard.set(pttAudioFeedback, forKey: SettingsManager.kPTTAudioFeedbackKey) }
+    }
+
+    @Published var ptmAudioFeedback: Bool {
+        didSet { UserDefaults.standard.set(ptmAudioFeedback, forKey: SettingsManager.kPTMAudioFeedbackKey) }
     }
 
     @Published var generalAudioFeedback: Bool {
@@ -236,8 +260,16 @@ class SettingsManager: ObservableObject {
         didSet { UserDefaults.standard.set(pttVisualFeedback, forKey: SettingsManager.kPTTVisualFeedbackKey) }
     }
 
+    @Published var ptmVisualFeedback: Bool {
+        didSet { UserDefaults.standard.set(ptmVisualFeedback, forKey: SettingsManager.kPTMVisualFeedbackKey) }
+    }
+
     @Published var pttNotificationDuration: Double {
         didSet { UserDefaults.standard.set(pttNotificationDuration, forKey: SettingsManager.kPTTNotificationDurationKey) }
+    }
+
+    @Published var ptmNotificationDuration: Double {
+        didSet { UserDefaults.standard.set(ptmNotificationDuration, forKey: SettingsManager.kPTMNotificationDurationKey) }
     }
 
     @Published var excludedDeviceUIDs: [String] {
@@ -321,6 +353,13 @@ class SettingsManager: ObservableObject {
     private static let kPTTAudioFeedbackKey = "pttAudioFeedback"
     private static let kPTTVisualFeedbackKey = "pttVisualFeedback"
     private static let kPTTNotificationDurationKey = "pttNotificationDuration"
+
+    private static let kPTMEnabledKey = "ptmEnabled"
+    private static let kPTMActionShortcutKey = "ptmActionShortcut"
+    private static let kPTMReleaseDelayKey = "ptmReleaseDelay"
+    private static let kPTMAudioFeedbackKey = "ptmAudioFeedback"
+    private static let kPTMVisualFeedbackKey = "ptmVisualFeedback"
+    private static let kPTMNotificationDurationKey = "ptmNotificationDuration"
     private static let kGeneralAudioFeedbackKey = "generalAudioFeedback"
     private static let kGeneralVisualFeedbackKey = "generalVisualFeedback"
     private static let kNotificationDurationKey = "notificationDuration"
@@ -371,6 +410,7 @@ class SettingsManager: ObservableObject {
         self.iconScale = savedScale > 0 ? savedScale : 1.0
 
         self.pttEnabled = UserDefaults.standard.bool(forKey: SettingsManager.kPTTEnabledKey)
+        self.ptmEnabled = UserDefaults.standard.bool(forKey: SettingsManager.kPTMEnabledKey)
 
         if let data = UserDefaults.standard.data(forKey: SettingsManager.kPTTToggleShortcutKey),
            let decoded = try? JSONDecoder().decode(AppKeyboardShortcut.self, from: data) {
@@ -386,6 +426,13 @@ class SettingsManager: ObservableObject {
             self.pttActionShortcut = AppKeyboardShortcut(keyCode: kVK_Space, modifiers: optionKey)
         }
 
+        if let data = UserDefaults.standard.data(forKey: SettingsManager.kPTMActionShortcutKey),
+           let decoded = try? JSONDecoder().decode(AppKeyboardShortcut.self, from: data) {
+            self.ptmActionShortcut = decoded
+        } else {
+            self.ptmActionShortcut = AppKeyboardShortcut(keyCode: kVK_ANSI_K, modifiers: cmdKey | shiftKey)
+        }
+
         self.pttBlinkEnabled = UserDefaults.standard.object(forKey: SettingsManager.kPTTBlinkEnabledKey) as? Bool ?? true
         self.pttBlinkColor = UserDefaults.standard.data(forKey: SettingsManager.kPTTBlinkColorKey) ?? (Self.archiveColor(.yellow) ?? Data())
         self.pttInactiveBackgroundColor = UserDefaults.standard.data(forKey: SettingsManager.kPTTInactiveBackgroundColorKey) ?? (Self.archiveColor(.black) ?? Data())
@@ -396,13 +443,23 @@ class SettingsManager: ObservableObject {
 
         self.pttReleaseDelay = UserDefaults.standard.double(forKey: SettingsManager.kPTTReleaseDelayKey)
 
+        self.ptmReleaseDelay = UserDefaults.standard.double(forKey: SettingsManager.kPTMReleaseDelayKey)
+
         self.pttAudioFeedback = UserDefaults.standard.bool(forKey: SettingsManager.kPTTAudioFeedbackKey)
+        self.ptmAudioFeedback = UserDefaults.standard.bool(forKey: SettingsManager.kPTMAudioFeedbackKey)
         self.pttVisualFeedback = UserDefaults.standard.object(forKey: SettingsManager.kPTTVisualFeedbackKey) as? Bool ?? true
+        self.ptmVisualFeedback = UserDefaults.standard.object(forKey: SettingsManager.kPTMVisualFeedbackKey) as? Bool ?? true
         
         if UserDefaults.standard.object(forKey: SettingsManager.kPTTNotificationDurationKey) != nil {
             self.pttNotificationDuration = UserDefaults.standard.double(forKey: SettingsManager.kPTTNotificationDurationKey)
         } else {
             self.pttNotificationDuration = 1.5
+        }
+
+        if UserDefaults.standard.object(forKey: SettingsManager.kPTMNotificationDurationKey) != nil {
+            self.ptmNotificationDuration = UserDefaults.standard.double(forKey: SettingsManager.kPTMNotificationDurationKey)
+        } else {
+            self.ptmNotificationDuration = 1.5
         }
 
         self.generalAudioFeedback = UserDefaults.standard.bool(forKey: SettingsManager.kGeneralAudioFeedbackKey)

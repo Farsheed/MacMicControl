@@ -8,7 +8,9 @@ class AppState: ObservableObject, HotkeyDelegate {
     @Published var audioController = AudioController()
     @Published var overlayController = OverlayController()
     @Published var isPTTActive: Bool = false
+    @Published var isPTMActive: Bool = false
     @Published var pttCountdownRemaining: Int? = nil
+    @Published var ptmCountdownRemaining: Int? = nil
 
     var hotkeyManager: HotkeyManager?
 
@@ -16,7 +18,9 @@ class AppState: ObservableObject, HotkeyDelegate {
     private var cancellables = Set<AnyCancellable>()
     private var lastToggleTime: TimeInterval = 0
     private var pttReleaseTimer: Timer?
+    private var ptmReleaseTimer: Timer?
     private var pttCountdownTimer: Timer?
+    private var ptmCountdownTimer: Timer?
     private var notificationObserver: NSObjectProtocol?
 
     init() {
@@ -50,6 +54,13 @@ class AppState: ObservableObject, HotkeyDelegate {
                                 duration: SettingsManager.shared.pttNotificationDuration
                             )
                         }
+                    } else if self.isPTMActive {
+                        if SettingsManager.shared.ptmVisualFeedback {
+                            self.overlayController.showOverlay(
+                                isMuted: isMuted,
+                                duration: SettingsManager.shared.ptmNotificationDuration
+                            )
+                        }
                     } else {
                         if SettingsManager.shared.generalVisualFeedback {
                             self.overlayController.showOverlay(
@@ -68,6 +79,7 @@ class AppState: ObservableObject, HotkeyDelegate {
             NotificationCenter.default.removeObserver(observer)
         }
         pttReleaseTimer?.invalidate()
+        ptmReleaseTimer?.invalidate()
         pttCountdownTimer?.invalidate()
     }
 
@@ -76,6 +88,11 @@ class AppState: ObservableObject, HotkeyDelegate {
              self.isPTTActive = false
              self.audioController.setMute(true)
              self.showNotification(title: "Microphone disconnected", message: "Push to Talk disabled.")
+        }
+        if self.isPTMActive {
+             self.isPTMActive = false
+             self.audioController.setMute(false)
+             self.showNotification(title: "Microphone disconnected", message: "Push to Mute disabled.")
         }
     }
 
@@ -189,6 +206,80 @@ class AppState: ObservableObject, HotkeyDelegate {
         }
     }
 
+    func ptmActionHotkeyPressed() {
+        DispatchQueue.main.async {
+            guard SettingsManager.shared.ptmEnabled else { return }
+            if self.ptmReleaseTimer != nil {
+            self.ptmReleaseTimer?.invalidate()
+            self.ptmReleaseTimer = nil
+            self.ptmCountdownTimer?.invalidate()
+            self.ptmCountdownTimer = nil
+            self.ptmCountdownRemaining = nil
+            self.isPTMActive = true // Stay muted
+            return
+        }
+            guard !self.isPTMActive else { return }
+            guard self.checkPermissions() else { return }
+
+            if self.audioController.isInputDeviceAvailable() == false {
+                 self.showNotification(title: "No microphone detected", message: "Please connect a microphone to use Push to Mute")
+                 return
+            }
+
+            self.isPTMActive = true
+            self.audioController.setMute(true)
+
+            if SettingsManager.shared.ptmAudioFeedback {
+                SettingsManager.shared.cachedSound(named: SettingsManager.shared.soundStandardMute)?.play()
+            }
+        }
+    }
+
+    func ptmActionHotkeyReleased() {
+        DispatchQueue.main.async {
+            guard SettingsManager.shared.ptmEnabled else { return }
+            guard self.isPTMActive else { return }
+
+            let delay = SettingsManager.shared.ptmReleaseDelay
+            if delay > 0 {
+                self.ptmReleaseTimer?.invalidate()
+                self.ptmReleaseTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+                    self?.finalizePTMRelease()
+                }
+
+                self.ptmCountdownRemaining = Int(ceil(delay))
+                self.ptmCountdownTimer?.invalidate()
+                self.ptmCountdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+                    guard let self = self, let remaining = self.ptmCountdownRemaining else { return }
+                    if remaining > 1 {
+                         self.ptmCountdownRemaining = remaining - 1
+                    } else {
+                         self.ptmCountdownTimer?.invalidate()
+                         self.ptmCountdownTimer = nil
+                    }
+                }
+
+                return
+            } else {
+                self.finalizePTMRelease()
+            }
+        }
+    }
+
+    private func finalizePTMRelease() {
+        self.ptmReleaseTimer = nil
+        self.ptmCountdownTimer?.invalidate()
+        self.ptmCountdownTimer = nil
+        self.ptmCountdownRemaining = nil
+
+        self.isPTMActive = false
+        self.audioController.setMute(false)
+
+        if SettingsManager.shared.ptmAudioFeedback {
+            SettingsManager.shared.cachedSound(named: SettingsManager.shared.soundStandardUnmute)?.play()
+        }
+    }
+
     private func finalizePTTRelease() {
         self.pttReleaseTimer = nil
         self.pttCountdownTimer?.invalidate()
@@ -215,6 +306,12 @@ class AppState: ObservableObject, HotkeyDelegate {
             pttCountdownTimer = nil
             pttCountdownRemaining = nil
             isPTTActive = false
+        }
+
+        if isPTMActive {
+            ptmReleaseTimer?.invalidate()
+            ptmReleaseTimer = nil
+            isPTMActive = false
         }
 
         let newMuteState = !audioController.isMuted

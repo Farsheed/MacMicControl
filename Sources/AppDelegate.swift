@@ -29,6 +29,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             appState.audioController.$isMuted.map { _ in () }.eraseToAnyPublisher(),
             appState.$isPTTActive.map { _ in () }.eraseToAnyPublisher(),
             appState.$pttCountdownRemaining.map { _ in () }.eraseToAnyPublisher(),
+            appState.$isPTMActive.map { _ in () }.eraseToAnyPublisher(),
+            appState.$ptmCountdownRemaining.map { _ in () }.eraseToAnyPublisher(),
             settings.$mutedColor.map { _ in () }.eraseToAnyPublisher(),
             settings.$unmutedColor.map { _ in () }.eraseToAnyPublisher(),
             settings.$iconScale.map { _ in () }.eraseToAnyPublisher(),
@@ -163,7 +165,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             )
             window.center()
             window.title = "Mac Mic Control Settings"
-            window.contentView = NSHostingView(rootView: SettingsView().environmentObject(appState))
+            window.contentView = NSHostingView(rootView: SettingsView()
+                .environmentObject(appState)
+                .environmentObject(SettingsManager.shared)
+            )
             window.isReleasedWhenClosed = false
             settingsWindow = window
         }
@@ -226,8 +231,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let settings = SettingsManager.shared
         let isMuted = appState.audioController.isMuted
         let isPTTActive = appState.isPTTActive
+        let isPTMActive = appState.isPTMActive
         let pttEnabled = settings.pttEnabled
-        let countdown = appState.pttCountdownRemaining
+        let ptmEnabled = settings.ptmEnabled
+        let countdown = appState.pttCountdownRemaining ?? appState.ptmCountdownRemaining
 
         let baseWidth: CGFloat = 34
         let baseHeight: CGFloat = 22
@@ -241,7 +248,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             let path = NSBezierPath(roundedRect: rect, xRadius: height/2, yRadius: height/2)
 
             // Determine background color
-            if isPTTActive {
+            if isPTTActive { // PTT is active (unmuted)
                 if countdown != nil {
                     settings.getUnmutedNSColor().setFill()
                 } else if settings.pttBlinkEnabled {
@@ -253,6 +260,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 } else {
                     settings.getUnmutedNSColor().setFill()
                 }
+            } else if isPTMActive { // PTM is active (muted)
+                 if countdown != nil {
+                    // Countdown after PTM release, should show "unmuting soon" state
+                    settings.getMutedNSColor().withAlphaComponent(0.5).setFill()
+                 } else {
+                    // Actively holding PTM key
+                    settings.getMutedNSColor().setFill()
+                 }
             } else if !isMuted {
                 let onColor = settings.getUnmutedNSColor()
                 if settings.generalBlinkEnabled {
@@ -264,9 +279,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 } else {
                     onColor.setFill()
                 }
-            } else {
+            } else { // Mic is muted (default state)
                 if pttEnabled {
                     settings.getPTTInactiveBackgroundNSColor().setFill()
+                } else if ptmEnabled {
+                     // Could use a different color for PTM-ready state if desired
+                    settings.getUnmutedNSColor().withAlphaComponent(0.3).setFill()
                 } else {
                     settings.getMutedNSColor().setFill()
                 }
@@ -300,14 +318,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 var iconName = "mic.fill"
                 var iconColor = NSColor.white
 
-                if isMuted {
-                    if pttEnabled {
+                if isMuted || isPTMActive {
+                    if pttEnabled && !isPTMActive { // PTT-ready state
                         iconName = "mic.slash.fill"
                         iconColor = settings.getPTTInactiveIconNSColor()
                     } else {
                         iconName = "mic.slash.fill"
                     }
+                } else if ptmEnabled && !isMuted { // PTM-ready, but mic is live
+                    iconName = "mic.fill"
+                    iconColor = settings.getMutedNSColor() // Use muted color to signify "press to mute"
                 }
+
 
                 if let iconImage = NSImage(systemSymbolName: iconName, accessibilityDescription: nil) {
                     let iconConfig = NSImage.SymbolConfiguration(pointSize: 13 * scale, weight: .bold)

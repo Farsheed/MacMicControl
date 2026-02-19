@@ -8,6 +8,8 @@ protocol HotkeyDelegate: AnyObject {
     func pttToggleHotkeyPressed()
     func pttActionHotkeyPressed()
     func pttActionHotkeyReleased()
+    func ptmActionHotkeyPressed()
+    func ptmActionHotkeyReleased()
 }
 
 class HotkeyManager {
@@ -19,6 +21,7 @@ class HotkeyManager {
     var toggleMuteHotKeyRef: EventHotKeyRef?
     var pttToggleHotKeyRef: EventHotKeyRef?
     var pttActionHotKeyRef: EventHotKeyRef?
+    var ptmActionHotKeyRef: EventHotKeyRef?
 
     // Modifier Monitors (for Modifier-only PTT)
     private var modifierMonitorGlobal: Any?
@@ -31,11 +34,13 @@ class HotkeyManager {
     private var previousToggleMuteShortcut: AppKeyboardShortcut?
     private var previousPTTToggleShortcut: AppKeyboardShortcut?
     private var previousPTTActionShortcut: AppKeyboardShortcut?
+    private var previousPTMActionShortcut: AppKeyboardShortcut?
 
     // IDs
     private let kToggleMuteID: UInt32 = 1
     private let kPTTToggleID: UInt32 = 2
     private let kPTTActionID: UInt32 = 3
+    private let kPTMActionID: UInt32 = 4
     private let kSignature: OSType = 0x1234
 
     init(delegate: HotkeyDelegate) {
@@ -45,6 +50,7 @@ class HotkeyManager {
         updateToggleMuteHotkey(SettingsManager.shared.shortcut)
         updatePTTToggleHotkey(SettingsManager.shared.pttToggleShortcut)
         updatePTTActionHotkey(SettingsManager.shared.pttActionShortcut)
+        updatePTMActionHotkey(SettingsManager.shared.ptmActionShortcut)
 
         // Listen for changes
         SettingsManager.shared.$shortcut
@@ -65,6 +71,13 @@ class HotkeyManager {
             .dropFirst()
             .sink { [weak self] newShortcut in
                 self?.updatePTTActionHotkey(newShortcut)
+            }
+            .store(in: &cancellables)
+
+        SettingsManager.shared.$ptmActionShortcut
+            .dropFirst()
+            .sink { [weak self] newShortcut in
+                self?.updatePTMActionHotkey(newShortcut)
             }
             .store(in: &cancellables)
 
@@ -100,12 +113,16 @@ class HotkeyManager {
                     manager.delegate?.pttToggleHotkeyPressed()
                 case manager.kPTTActionID:
                     manager.delegate?.pttActionHotkeyPressed()
+                case manager.kPTMActionID:
+                    manager.delegate?.ptmActionHotkeyPressed()
                 default:
                     break
                 }
             } else if kind == kEventHotKeyReleased {
                 if hotKeyID.id == manager.kPTTActionID {
                     manager.delegate?.pttActionHotkeyReleased()
+                } else if hotKeyID.id == manager.kPTMActionID {
+                    manager.delegate?.ptmActionHotkeyReleased()
                 }
             }
 
@@ -114,6 +131,36 @@ class HotkeyManager {
 
         if status != noErr {
             logger.error("Failed to install event handler: \(status, privacy: .public)")
+        }
+    }
+
+    func updatePTMActionHotkey(_ shortcut: AppKeyboardShortcut) {
+        let oldShortcut = previousPTMActionShortcut
+
+        if let ref = ptmActionHotKeyRef {
+            UnregisterEventHotKey(ref)
+            ptmActionHotKeyRef = nil
+        }
+
+        let hotKeyID = EventHotKeyID(signature: kSignature, id: kPTMActionID)
+        var ref: EventHotKeyRef?
+        let status = RegisterEventHotKey(UInt32(shortcut.keyCode), UInt32(shortcut.modifiers), hotKeyID, GetApplicationEventTarget(), 0, &ref)
+
+        if status == noErr {
+            ptmActionHotKeyRef = ref
+            previousPTMActionShortcut = shortcut
+        } else if status == eventHotKeyExistsErr {
+            DispatchQueue.main.async {
+                SettingsManager.shared.reportHotkeyError(shortcut: shortcut, type: "PTM Action") {
+                    if let old = oldShortcut {
+                        SettingsManager.shared.ptmActionShortcut = old
+                    }
+                }
+            }
+            previousPTMActionShortcut = shortcut
+        } else {
+            logger.error("Failed to register PTM Action hotkey: \(status, privacy: .public)")
+            previousPTMActionShortcut = shortcut
         }
     }
 
@@ -257,6 +304,7 @@ class HotkeyManager {
         if let ref = toggleMuteHotKeyRef { UnregisterEventHotKey(ref) }
         if let ref = pttToggleHotKeyRef { UnregisterEventHotKey(ref) }
         if let ref = pttActionHotKeyRef { UnregisterEventHotKey(ref) }
+        if let ref = ptmActionHotKeyRef { UnregisterEventHotKey(ref) }
 
         if let monitor = modifierMonitorGlobal { NSEvent.removeMonitor(monitor) }
         if let monitor = modifierMonitorLocal { NSEvent.removeMonitor(monitor) }

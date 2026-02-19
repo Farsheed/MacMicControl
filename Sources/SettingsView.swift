@@ -2,7 +2,7 @@ import SwiftUI
 import Carbon
 
 struct SettingsView: View {
-    @ObservedObject var settings = SettingsManager.shared
+    @EnvironmentObject var settings: SettingsManager
 
     var body: some View {
         TabView {
@@ -14,6 +14,11 @@ struct SettingsView: View {
             PTTSettingsView()
                 .tabItem {
                     Label("Push to Talk", systemImage: "mic.and.signal.meter")
+                }
+
+            PTMSettingsView()
+                .tabItem {
+                    Label("Push to Mute", systemImage: "speaker.slash.fill")
                 }
 
             DevicesSettingsView()
@@ -38,7 +43,7 @@ struct SettingsView: View {
 }
 
 struct GeneralSettingsView: View {
-    @ObservedObject var settings = SettingsManager.shared
+    @EnvironmentObject var settings: SettingsManager
     @State private var isRecording = false
 
     var body: some View {
@@ -161,7 +166,7 @@ struct GeneralSettingsView: View {
 }
 
 struct PTTSettingsView: View {
-    @ObservedObject var settings = SettingsManager.shared
+    @EnvironmentObject var settings: SettingsManager
     @EnvironmentObject var appState: AppState
     @State private var isRecordingToggle = false
     @State private var isRecordingAction = false
@@ -266,6 +271,7 @@ struct PTTSettingsView: View {
                                 }
                             }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(4)
                     }
 
@@ -334,8 +340,95 @@ struct PTTSettingsView: View {
     }
 }
 
+struct PTMSettingsView: View {
+    @EnvironmentObject var settings: SettingsManager
+    @EnvironmentObject var appState: AppState
+    @State private var isRecordingAction = false
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                GroupBox {
+                    Toggle("Enable Push to Mute", isOn: $settings.ptmEnabled)
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                if settings.ptmEnabled {
+                    GroupBox(label: Text("Shortcut")) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("PTM Action (Hold to Mute)")
+                                Spacer()
+                                ShortcutRecorderButton(shortcut: $settings.ptmActionShortcut, isRecording: $isRecordingAction)
+                            }
+                        }
+                        .padding(4)
+                    }
+
+                    GroupBox(label: Text("Timing")) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Delay Enable")
+                                Spacer()
+                                Text("\(String(format: "%.0f", settings.ptmReleaseDelay))s")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Slider(value: $settings.ptmReleaseDelay, in: 0...30.0, step: 1.0) {
+                                EmptyView()
+                            } minimumValueLabel: {
+                                Text("0s").font(.caption)
+                            } maximumValueLabel: {
+                                Text("30s").font(.caption)
+                            }
+                            
+                            Text("Time to wait before unmuting after releasing the key.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.top, 4)
+                        }
+                        .padding(4)
+                    }
+
+                    GroupBox(label: Text("Feedback")) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Toggle("Visual notifications", isOn: $settings.ptmVisualFeedback)
+                            
+                            if settings.ptmVisualFeedback {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        Text("Duration")
+                                        Spacer()
+                                        Text("\(String(format: "%.1f", settings.ptmNotificationDuration))s")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Slider(value: $settings.ptmNotificationDuration, in: 0...10.0, step: 0.5) {
+                                        EmptyView()
+                                    } minimumValueLabel: {
+                                        Text("0s").font(.caption)
+                                    } maximumValueLabel: {
+                                        Text("10s").font(.caption)
+                                    }
+                                }
+                                .padding(.leading, 20)
+                            }
+
+                            Toggle("Audio Feedback", isOn: $settings.ptmAudioFeedback)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(4)
+                    }
+                }
+            }
+            .padding()
+        }
+    }
+}
+
 struct DevicesSettingsView: View {
-    @ObservedObject var settings = SettingsManager.shared
+    @EnvironmentObject var settings: SettingsManager
     @EnvironmentObject var appState: AppState
 
     var body: some View {
@@ -481,7 +574,7 @@ struct InfiniteAnimationModifier: ViewModifier {
 
 struct TestPTTView: View {
     @Binding var isPresented: Bool
-    @ObservedObject var settings = SettingsManager.shared
+    @EnvironmentObject var settings: SettingsManager
     @EnvironmentObject var appState: AppState
 
     @State private var isBlinking = false
